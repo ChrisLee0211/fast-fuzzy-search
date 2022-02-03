@@ -139,7 +139,9 @@ impl Fuzzr {
   pub fn search(&mut self, query: String) -> Result<js_sys::Array, JsValue> {
     let iterator = js_sys::try_iter(&self.items)?.ok_or("Items must be iterable")?;
 
-    let mut results: BTreeSet<SearchResultItem> = BTreeSet::new();
+    // let mut results: BTreeSet<SearchResultItem> = BTreeSet::new();
+
+    let js_array = js_sys::Array::new();
 
     for (index, item) in iterator.into_iter().enumerate() {
       let item = item?;
@@ -151,34 +153,35 @@ impl Fuzzr {
       }?;
 
       match self.matcher.fuzzy_indices(text.as_str(), query.as_str()) {
-        Some((score, indices)) => {
-          results.insert(SearchResultItem {
-            item,
-            index: index,
-            score,
-            formatted: self.format(&text.as_str(), &indices).unwrap_or(text.into())
-          });
+        Some((score, ..)) => {
+           let js_item = js_sys::JsString::from(item);
+           let js_index = js_sys::Number::from(index as u32);
+           let js_score = js_sys::Number::from(score as u32);
+           let object = js_sys::Object::new();
+           js_sys::Reflect::set(&object, &js_sys::JsString::from("item"), &js_item).unwrap();
+           js_sys::Reflect::set(&object, &js_sys::JsString::from("index"), &js_index).unwrap();
+           js_sys::Reflect::set(&object, &js_sys::JsString::from("score"), &js_score).unwrap();
+           js_array.push(&object);
         },
         None => ()
       }
     }
 
-    let js_array = js_sys::Array::new();
 
-    for result in results {
-      let item = js_sys::JsString::from(result.item);
-      let index = js_sys::Number::from(result.index as u32);
-      let score = js_sys::Number::from(result.score as u32);
-      let formatted = js_sys::JsString::from(result.formatted);
+    // for result in results {
+    //   let item = js_sys::JsString::from(result.item);
+    //   let index = js_sys::Number::from(result.index as u32);
+    //   let score = js_sys::Number::from(result.score as u32);
+    //   let formatted = js_sys::JsString::from(result.formatted);
 
-      let object = js_sys::Object::new();
-      js_sys::Reflect::set(&object, &js_sys::JsString::from("item"), &item).unwrap();
-      js_sys::Reflect::set(&object, &js_sys::JsString::from("index"), &index).unwrap();
-      js_sys::Reflect::set(&object, &js_sys::JsString::from("score"), &score).unwrap();
-      js_sys::Reflect::set(&object, &js_sys::JsString::from("formatted"), &formatted).unwrap();
+    //   let object = js_sys::Object::new();
+    //   js_sys::Reflect::set(&object, &js_sys::JsString::from("item"), &item).unwrap();
+    //   js_sys::Reflect::set(&object, &js_sys::JsString::from("index"), &index).unwrap();
+    //   js_sys::Reflect::set(&object, &js_sys::JsString::from("score"), &score).unwrap();
+    //   js_sys::Reflect::set(&object, &js_sys::JsString::from("formatted"), &formatted).unwrap();
 
-      js_array.push(&object);
-    }
+    //   js_array.push(&object);
+    // }
 
     Ok(js_array)
   }
